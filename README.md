@@ -51,6 +51,7 @@ This service sits at the **edge layer** of a computer vision pipeline. Instead o
 - **Real-time detection** — async pipeline processes frames continuously with configurable FPS cap
 - **RTSP & webcam support** — works with IP cameras over RTSP or any local webcam (index-based)
 - **YOLOv8 inference** — runs on CPU or GPU, swappable to any `.pt` model including face-specific variants
+- **Live annotated stream** — `/stream` endpoint serves MJPEG video with green bounding boxes drawn over detected faces, viewable directly in any browser
 - **Event-driven output** — publishes structured JSON payloads to RabbitMQ topic exchange, persistent delivery
 - **FastAPI lifecycle** — pipeline starts/stops cleanly with the server via `lifespan` context manager
 - **Health & status API** — `/health` and `/status` endpoints for monitoring and orchestration
@@ -146,7 +147,27 @@ YOLO_MODEL_PATH=yolov8n-face.pt
 |---|---|---|
 | `GET` | `/health` | Health check — returns `{"status": "ok"}` |
 | `GET` | `/status` | Pipeline status, stream source, model info |
+| `GET` | `/stream` | Live MJPEG stream with bounding boxes — open directly in browser |
 | `GET` | `/docs` | Auto-generated Swagger UI |
+
+### Live Stream
+
+Open `/stream` directly in a browser or embed it in any frontend with a plain `<img>` tag:
+
+```html
+<img src="http://localhost:8000/stream" />
+```
+
+The stream uses **MJPEG over HTTP** (`multipart/x-mixed-replace`) — no WebSocket or JavaScript required. The pipeline annotates each frame with green bounding boxes and confidence scores before sending.
+
+```
+Pipeline loop          /stream endpoint
+     │                       │
+     │  every frame          │  every 1/30s
+     ▼                       ▼
+detect faces  →  _latest_frame  →  imencode → JPEG → HTTP chunk
+draw boxes   ↗
+```
 
 ---
 
@@ -198,6 +219,7 @@ face-recognition-edge/
 
 ## Roadmap
 
+- [x] Live annotated MJPEG stream via `/stream`
 - [ ] Face recognition (embedding + identity matching)
 - [ ] Frame snapshot storage (S3 / Blob)
 - [ ] Prometheus metrics endpoint
