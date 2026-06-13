@@ -22,27 +22,9 @@ designed to run close to the camera with minimal latency.
 
 This service sits at the **edge layer** of a computer vision pipeline. Instead of sending raw video to a central server, it processes frames locally and only forwards structured detection events — reducing bandwidth and enabling near-instant response times.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Edge Device                              │
-│                                                                 │
-│   RTSP / Webcam                                                 │
-│        │                                                        │
-│        ▼                                                        │
-│  ┌─────────────┐    ┌──────────────────┐    ┌───────────────┐  │
-│  │   Stream    │───▶│    Detection     │───▶│     Queue     │  │
-│  │   Service   │    │    Service       │    │    Service    │  │
-│  │  (OpenCV)   │    │   (YOLOv8)      │    │   (aio-pika)  │  │
-│  └─────────────┘    └──────────────────┘    └───────┬───────┘  │
-│                                                     │          │
-└─────────────────────────────────────────────────────┼──────────┘
-                                                      │
-                                                      ▼
-                                              ┌───────────────┐
-                                              │   RabbitMQ    │
-                                              │  (Backend)    │
-                                              └───────────────┘
-```
+## Architecture
+
+![Architecture](https://github.com/user-attachments/assets/c321f413-f6a0-4e37-8cb1-28d0b27eaa35)
 
 ---
 
