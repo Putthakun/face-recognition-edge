@@ -194,17 +194,6 @@ face-recognition-edge/
 
 ---
 
-## Roadmap
-
-- [x] Live annotated MJPEG stream via `/stream`
-- [x] Publish face crops to RabbitMQ for downstream recognition
-- [ ] Frame snapshot storage (S3 / Blob)
-- [ ] Prometheus metrics endpoint
-- [ ] GPU acceleration support (CUDA)
-- [ ] Multi-camera support
-
----
-
 ## Related Services
 
 This service is part of a larger system. See [`real-time-face-recognition-attendance-system`](https://github.com/Putthakun/real-time-face-recognition-attendance-system) for the full architecture overview.
@@ -217,7 +206,3 @@ This service is part of a larger system. See [`real-time-face-recognition-attend
 | [`face-recognition-infra`](https://github.com/Putthakun/face-recognition-infrastructure) | Shared SQL Server, Redis, RabbitMQ via Docker Compose |
 
 ---
-
-## License
-
-MIT
