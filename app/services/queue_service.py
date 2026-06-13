@@ -1,14 +1,20 @@
+import base64
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 import aio_pika
+import cv2
+import numpy as np
 from aio_pika import ExchangeType
 
 from app.core.config import settings
 from app.services.detection_service import Detection
 
 logger = logging.getLogger(__name__)
+
+DEBUG_FACE_DIR = Path("debug_faces")
 
 
 class QueueService:
@@ -32,21 +38,26 @@ class QueueService:
             await self._connection.close()
             logger.info("RabbitMQ connection closed")
 
-    async def publish(self, detections: list[Detection], frame_id: int) -> None:
+    async def publish(self, face_image: np.ndarray, detection: Detection) -> None:
         if not self._exchange:
             raise RuntimeError("Not connected. Call connect() first.")
 
+        _, jpeg = cv2.imencode(".jpg", face_image)
+        jpeg_bytes = jpeg.tobytes()
+        image_base64 = base64.b64encode(jpeg_bytes).decode("ascii")
+
+        if settings.debug:
+            DEBUG_FACE_DIR.mkdir(exist_ok=True)
+            filename = DEBUG_FACE_DIR / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%f')}.jpg"
+            filename.write_bytes(jpeg_bytes)
+            logger.debug("Saved debug face image: %s", filename)
+
         payload = {
-            "frame_id": frame_id,
+            "camera_id": settings.camera_id,          # int e.g. 1
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "face_count": len(detections),
-            "detections": [
-                {
-                    "bbox": [d.x1, d.y1, d.x2, d.y2],
-                    "confidence": round(d.confidence, 4),
-                }
-                for d in detections
-            ],
+            "image_base64": image_base64,
+            "confidence": round(detection.confidence, 4),
+            "bbox": [detection.x1, detection.y1, detection.x2, detection.y2],
         }
 
         message = aio_pika.Message(
@@ -56,4 +67,4 @@ class QueueService:
         )
 
         await self._exchange.publish(message, routing_key=settings.rabbitmq_routing_key)
-        logger.debug("Published frame_id=%d faces=%d", frame_id, len(detections))
+        logger.debug("Published face image (camera_id=%s)", settings.camera_id)

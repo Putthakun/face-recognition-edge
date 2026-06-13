@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     # Stream
     stream_source: str = "0"  # "0" = webcam, or rtsp://...
     stream_fps_limit: int = 10
+    camera_id: int = 1  # numeric ID matching .NET cameras table
 
     # Detection
     yolo_model_path: str = "yolov8n.pt"

@@ -36,15 +36,29 @@ def _draw_detections(frame: np.ndarray, detections: list[Detection]) -> np.ndarr
     return annotated
 
 
+def _crop_with_padding(frame: np.ndarray, d: Detection, pad: float = 0.4) -> np.ndarray:
+    """Crop face with extra padding so InsightFace detection can find the face."""
+    h, w = frame.shape[:2]
+    bw = d.x2 - d.x1
+    bh = d.y2 - d.y1
+    px = int(bw * pad)
+    py = int(bh * pad)
+    x1 = max(0, d.x1 - px)
+    y1 = max(0, d.y1 - py)
+    x2 = min(w, d.x2 + px)
+    y2 = min(h, d.y2 + py)
+    return frame[y1:y2, x1:x2]
+
+
 async def _run_pipeline() -> None:
     global _latest_frame
-    frame_id = 0
     async for frame in stream_svc.frames():
         detections = detection_svc.detect(frame)
         _latest_frame = _draw_detections(frame, detections)
-        if detections:
-            await queue_svc.publish(detections, frame_id)
-        frame_id += 1
+        for d in detections:
+            face_crop = _crop_with_padding(frame, d, pad=0.4)
+            if face_crop.size > 0:
+                await queue_svc.publish(face_crop, d)
 
 
 async def _mjpeg_generator():

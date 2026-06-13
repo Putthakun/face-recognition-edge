@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-FF6F00?style=flat)](https://ultralytics.com)
-[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.13-FF6600?style=flat&logo=rabbitmq&logoColor=white)](https://rabbitmq.com)
+[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3-FF6600?style=flat&logo=rabbitmq&logoColor=white)](https://rabbitmq.com)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com)
 
 A lightweight edge service that reads video streams from RTSP cameras or webcams,
@@ -124,6 +124,7 @@ All configuration is managed via environment variables. Copy `.env.example` to `
 |---|---|---|
 | `STREAM_SOURCE` | `0` | Webcam index (`0`, `1`, ...) or RTSP URL |
 | `STREAM_FPS_LIMIT` | `10` | Max frames per second to process |
+| `CAMERA_ID` | `1` | Numeric camera ID, must match the `Cameras` table in `face-recognition-api` |
 | `YOLO_MODEL_PATH` | `yolov8n.pt` | Path to YOLO model file |
 | `DETECTION_CONFIDENCE` | `0.5` | Minimum confidence threshold (0.0–1.0) |
 | `RABBITMQ_URL` | `amqp://guest:guest@localhost:5672/` | RabbitMQ connection URL |
@@ -173,25 +174,19 @@ draw boxes   ↗
 
 ## Event Payload
 
-Each detection publishes a JSON message to RabbitMQ:
+For each detected face, the cropped (and padded) face image is published as a JSON message to the `face_events` exchange with routing key `face.detected`:
 
 ```json
 {
-  "frame_id": 1042,
+  "camera_id": 1,
   "timestamp": "2026-05-28T15:04:05.123Z",
-  "face_count": 2,
-  "detections": [
-    {
-      "bbox": [120, 80, 240, 200],
-      "confidence": 0.9312
-    },
-    {
-      "bbox": [310, 95, 420, 205],
-      "confidence": 0.8754
-    }
-  ]
+  "image_base64": "<jpeg bytes, base64-encoded>",
+  "confidence": 0.9312,
+  "bbox": [120, 80, 240, 200]
 }
 ```
+
+`face-recognition-server` consumes this queue, extracts an embedding from the cropped image, and matches it against known employees.
 
 ---
 
@@ -220,11 +215,24 @@ face-recognition-edge/
 ## Roadmap
 
 - [x] Live annotated MJPEG stream via `/stream`
-- [ ] Face recognition (embedding + identity matching)
+- [x] Publish face crops to RabbitMQ for downstream recognition
 - [ ] Frame snapshot storage (S3 / Blob)
 - [ ] Prometheus metrics endpoint
 - [ ] GPU acceleration support (CUDA)
 - [ ] Multi-camera support
+
+---
+
+## Related Services
+
+This service is part of a larger system. See [`real-time-face-recognition-attendance-system`](https://github.com/Putthakun/real-time-face-recognition-attendance-system) for the full architecture overview.
+
+| Repo | Role |
+|---|---|
+| [`face-recognition-server`](https://github.com/Putthakun/face-recognition-server) | Consumes face crops, runs InsightFace matching, records attendance |
+| [`face-recognition-api`](https://github.com/Putthakun/face-recognition-api) | System of record — employees, cameras, transactions, auth |
+| [`face-recognition-web`](https://github.com/Putthakun/face-recognition-web) | Vue 3 dashboard for admins/supervisors |
+| [`face-recognition-infra`](https://github.com/Putthakun/face-recognition-infrastructure) | Shared SQL Server, Redis, RabbitMQ via Docker Compose |
 
 ---
 
